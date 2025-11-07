@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>JotForm User Autocomplete Widget</title>
 <style>
 /* JotForm-like and modernized styles */
 body { font-family: Arial, sans-serif; margin: 20px; }
@@ -17,7 +16,18 @@ input {
   border-radius: 6px;
   transition: border 0.2s, box-shadow 0.2s;
 }
-input:focus {
+
+#userSearch {
+  font-size: 14px;
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+input:focus, #userSearch:focus {
   border-color: #4A90E2;
   box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
   outline: none;
@@ -40,6 +50,7 @@ input:focus {
   cursor: pointer;
   transition: background-color 0.2s;
 }
+
 .autocomplete-item:hover, .autocomplete-item.active {
   background-color: #f0f8ff;
   color: #333;
