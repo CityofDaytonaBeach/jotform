@@ -5,14 +5,37 @@
   <title>Supabase User Search Widget</title>
   <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 15px; }
-    input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; }
-    select { width: 100%; padding: 8px; height: 200px; }
-    #status { font-size: 0.9em; color: #666; margin-top: 5px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 15px;
+      color: #333;
+    }
+    h3 {
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      height: 200px;
+    }
+    #status {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
-  <h3>Search Users</h3>
+  <h3>Search City Employees</h3>
   <input type="text" id="searchInput" placeholder="Type Lastname, Firstname..." />
   <select id="userDropdown" size="10"></select>
   <div id="status">Loading users...</div>
@@ -21,30 +44,21 @@
     const apiUrl = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
     let users = [];
 
-    // --- Load Users ---
+    // --- Load Users from Supabase Function ---
     async function loadUsers() {
+      const status = document.getElementById("status");
       try {
+        console.log("Fetching from:", apiUrl);
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         users = await res.json();
-
-        // Format names as "Lastname, Firstname"
-        users.forEach(u => {
-          const parts = (u.displayname || "").trim().split(" ");
-          if (parts.length >= 2) {
-            const firstname = parts.slice(0, -1).join(" ");
-            const lastname = parts[parts.length - 1];
-            u.formattedName = `${lastname}, ${firstname}`;
-          } else {
-            u.formattedName = u.displayname || "";
-          }
-        });
+        console.log("Loaded users:", users.length);
 
         renderDropdown(users);
-        document.getElementById("status").textContent = `Loaded ${users.length} users`;
+        status.textContent = `Loaded ${users.length} users`;
       } catch (err) {
         console.error("Error loading users:", err);
-        document.getElementById("status").textContent = "Failed to load users.";
+        status.textContent = "Failed to load users.";
       }
     }
 
@@ -52,42 +66,52 @@
     function renderDropdown(list) {
       const dropdown = document.getElementById("userDropdown");
       dropdown.innerHTML = "";
+      if (!list.length) {
+        const opt = document.createElement("option");
+        opt.textContent = "No users found";
+        dropdown.appendChild(opt);
+        return;
+      }
       list.forEach(u => {
         const opt = document.createElement("option");
         opt.value = u.mail;
-        opt.textContent = u.formattedName;
+        opt.textContent = u.displayname || u.mail;
         dropdown.appendChild(opt);
       });
     }
 
-    // --- Search Filter ---
+    // --- Search Filter (case-insensitive, ignores commas/spaces) ---
     document.getElementById("searchInput").addEventListener("input", e => {
-      const term = e.target.value.toLowerCase();
-      const filtered = users.filter(u =>
-        u.formattedName.toLowerCase().includes(term)
-      );
+      const term = e.target.value.toLowerCase().replace(/\s+/g, '').replace(/,/g, '');
+      const filtered = !term
+        ? users
+        : users.filter(u => {
+            const name = (u.displayname || "").toLowerCase().replace(/\s+/g, '').replace(/,/g, '');
+            return name.includes(term);
+          });
       renderDropdown(filtered);
     });
 
-    // --- When user selected, send full data to Jotform instantly ---
+    // --- When user selects an employee, send data to Jotform instantly ---
     document.getElementById("userDropdown").addEventListener("change", e => {
       const selectedEmail = e.target.value;
       const selectedUser = users.find(u => u.mail === selectedEmail);
       if (!selectedUser) return;
 
-      // Send full JSON data to Jotform live
+      console.log("Selected user:", selectedUser);
+      // Send full user JSON to Jotform immediately
       JFCustomWidget.sendData({
         value: JSON.stringify(selectedUser)
       });
     });
 
-    // --- Subscribe to Jotform events ---
+    // --- Jotform Widget Event Listeners ---
     JFCustomWidget.subscribe("ready", function() {
       console.log("Widget ready, loading users...");
       loadUsers();
     });
 
-    // On submit, still send final selected user (safety)
+    // Send final data again on submit (safety)
     JFCustomWidget.subscribe("submit", function() {
       const dropdown = document.getElementById("userDropdown");
       const selected = dropdown.selectedOptions[0];
