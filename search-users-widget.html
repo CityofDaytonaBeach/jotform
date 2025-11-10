@@ -56,9 +56,10 @@ console.clear();
 console.log("🔍 Loading Employee Lookup Widget...");
 
 // ===== CONFIG =====
-const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users"; // change if needed
-
+const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users"; // your Supabase endpoint
+const JOTFORM_ORIGIN = "https://form.jotform.com"; // target live form origin
 let users = [];
+
 const searchInput = document.getElementById("searchUser");
 const resultsContainer = document.getElementById("resultsContainer");
 
@@ -71,6 +72,7 @@ function sendWidgetData(data) {
   }
 }
 
+// ===== AUTOFILL FORM FIELDS =====
 function fillFormFields(user) {
   const fieldMappings = {
     'input_5': user.displayname || '',
@@ -88,7 +90,7 @@ function fillFormFields(user) {
       type: 'populate',
       qid: fieldId,
       value: fieldMappings[fieldId]
-    }, '*');
+    }, JOTFORM_ORIGIN);
   });
 
   console.log("✅ Sent field data to parent form:", fieldMappings);
@@ -98,6 +100,7 @@ function fillFormFields(user) {
 async function loadUsers() {
   try {
     const res = await fetch(API_URL);
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     users = await res.json();
     console.log(`✅ Loaded ${users.length} users`);
   } catch (err) {
@@ -107,7 +110,7 @@ async function loadUsers() {
 
 loadUsers();
 
-// ===== AUTOCOMPLETE =====
+// ===== AUTOCOMPLETE BEHAVIOR =====
 searchInput.addEventListener("input", (e) => {
   const query = e.target.value.trim().toLowerCase();
   resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
@@ -146,7 +149,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ===== JOTFORM READY =====
+// ===== JOTFORM READY EVENT =====
 if (window.JFCustomWidget) {
   JFCustomWidget.subscribe("ready", function() {
     console.log("✅ Jotform Widget Ready");
