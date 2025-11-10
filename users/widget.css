@@ -7,16 +7,16 @@ body {
 #resultsContainer {
   position: relative;
   width: 100%;
-  overflow: visible; /* ensures dropdown isn't clipped */
+  overflow: visible; /* prevent clipping */
 }
 
 #searchUser {
   width: 100%;
   padding: 6px;
   margin: 0;
-  box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 4px;
+  box-sizing: border-box;
 }
 
 .dropdown {
