@@ -43,20 +43,32 @@
 </style>
 </head>
 <body>
-  <div id="resultsContainer">
-    <input type="text" id="searchUser" placeholder="Search employee..." autocomplete="off" />
-  </div>
+<div id="resultsContainer">
+  <input type="text" id="searchUser" placeholder="Search employee..." autocomplete="off" />
+</div>
 
 <script>
 let users = [];
+const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
+const searchInput = document.getElementById("searchUser");
+const resultsContainer = document.getElementById("resultsContainer");
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
-  const searchInput = document.getElementById("searchUser");
-  const resultsContainer = document.getElementById("resultsContainer");
+console.clear();
+console.log("🔍 Loading User Search Widget...");
 
-  console.log("🔍 Jotform widget loading...");
+// Safe sendData wrapper
+function sendWidgetData(data) {
+  try {
+    if (window.JFCustomWidget) {
+      JFCustomWidget.sendData(data);
+    }
+  } catch (err) {
+    console.warn("⚠️ sendData failed (likely preview mode):", err);
+  }
+}
 
+// Fetch users from Supabase function
+async function loadUsers() {
   try {
     const res = await fetch(API_URL);
     users = await res.json();
@@ -64,76 +76,72 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (err) {
     console.error("❌ Error fetching users:", err);
   }
+}
 
-  if (!Array.isArray(users) || users.length === 0) {
-    console.warn("⚠️ No users loaded");
-    return;
-  }
+loadUsers();
 
-  searchInput.addEventListener("input", (e) => {
-    const query = e.target.value.trim().toLowerCase();
-    resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
-    if (!query) return;
+// Listen for input
+searchInput.addEventListener("input", (e) => {
+  const query = e.target.value.trim().toLowerCase();
+  resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
+  if (!query) return;
 
-    const matches = users.filter(u =>
-      (u.full_name || "").toLowerCase().includes(query)
-    ).slice(0, 8);
+  const matches = users.filter(u =>
+    (u.displayname || "").toLowerCase().includes(query)
+  ).slice(0, 8);
 
-    if (matches.length === 0) return;
+  if (matches.length === 0) return;
 
-    const dropdown = document.createElement("div");
-    dropdown.className = "dropdown";
+  const dropdown = document.createElement("div");
+  dropdown.className = "dropdown";
 
-    matches.forEach(u => {
-      const item = document.createElement("div");
-      item.className = "dropdown-item";
-      item.textContent = u.full_name || "(No Name)";
-      item.addEventListener("click", () => {
-        searchInput.value = u.full_name || "";
-        dropdown.remove();
-        console.log("✅ Selected:", u);
+  matches.forEach(u => {
+    const item = document.createElement("div");
+    item.className = "dropdown-item";
+    item.textContent = u.displayname || "(No Name)";
+    item.addEventListener("click", () => {
+      searchInput.value = u.displayname || "";
+      dropdown.remove();
+      console.log("✅ Selected user:", u);
 
-        // Autofill Jotform fields
-        const fields = {
-          "#input_5": u.full_name,
-          "#input_6": u.email,
-          "#input_7": u.job_title,
-          "#input_8": u.department,
-          "#input_9": u.manager,
-          "#input_10": u.manager_email,
-          "#input_11": u.employee_id,
-          "#input_12": u.division
-        };
-        for (const [sel, val] of Object.entries(fields)) {
-          const el = parent.document.querySelector(sel);
-          if (el) el.value = val || "";
-        }
+      // Autofill Jotform fields
+      const fields = {
+        "#input_5": u.displayname,
+        "#input_6": u.mail,
+        "#input_7": u.jobtitle,
+        "#input_8": u.department,
+        "#input_9": u.manager,
+        "#input_10": u.managermail,
+        "#input_11": u.employeeId,
+        "#input_12": u.division
+      };
+      for (const [sel, val] of Object.entries(fields)) {
+        const el = parent.document.querySelector(sel);
+        if (el) el.value = val || "";
+      }
 
-        // Send data back to Jotform
-        if (window.JFCustomWidget) {
-          JFCustomWidget.sendData({
-            valid: true,
-            value: JSON.stringify(u)
-          });
-        }
-      });
-      dropdown.appendChild(item);
+      // Send data back to Jotform
+      sendWidgetData({ valid: true, value: JSON.stringify(u) });
     });
-
-    resultsContainer.appendChild(dropdown);
+    dropdown.appendChild(item);
   });
 
-  document.addEventListener("click", (e) => {
-    if (!resultsContainer.contains(e.target) && e.target !== searchInput) {
-      resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
-    }
-  });
+  resultsContainer.appendChild(dropdown);
 });
 
-// Jotform widget integration
+// Remove dropdown if clicked outside
+document.addEventListener("click", (e) => {
+  if (!resultsContainer.contains(e.target) && e.target !== searchInput) {
+    resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
+  }
+});
+
+// Jotform widget ready event
 if (window.JFCustomWidget) {
-  JFCustomWidget.subscribe("ready", function (msg) {
+  JFCustomWidget.subscribe("ready", function(msg) {
     console.log("✅ Jotform Widget Ready");
+    // Initialize empty data
+    sendWidgetData({ valid: true, value: "" });
   });
 }
 </script>
