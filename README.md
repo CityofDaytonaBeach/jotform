@@ -11,17 +11,12 @@ Enable Jotform forms to interact with live Supabase data or functions (Edge Func
 
 Each widget is a standalone **HTML/JavaScript file** hosted on GitHub Pages (or another static host) and embedded in Jotform using an iFrame.
 
----
-
 ## 📦 Example Widgets
 
 | Widget File | Description |
-|--------------|-------------|
-| <a href="https://cityofdaytonabeach.github.io/jotform-widgets/search-users-widget.html" target="_blank">
-  search-users-widget.html
-</a> | Fetches user data from a Supabase Edge Function connected to the Microsoft Graph API. Allows searching by last name, first name (`Lastname, Firstname` format) and auto-fills Jotform fields. |
+|-------------|-------------|
+| [search-users-widget.html](https://cityofdaytonabeach.github.io/jotform-widgets/search-users-widget.html) | Fetches user data from a Supabase Edge Function connected to the Microsoft Graph API. Allows searching by last name, first name (`Lastname, Firstname` format) and auto-fills Jotform fields. |
 
----
 
 ## 🧠 How It Works
 
