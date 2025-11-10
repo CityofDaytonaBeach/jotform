@@ -1,188 +1,141 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Search Users Widget</title>
-    <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
-    <style>
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff;
-        font-family: Inter, Arial, sans-serif;
-        font-size: 14px;
-        color: #333;
-        overflow: hidden;
-      }
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Search Widget</title>
+<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+  }
+  #resultsContainer {
+    position: relative;
+    width: 100%;
+  }
+  #searchUser {
+    width: 100%;
+    padding: 4px;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ccc;
+    z-index: 9999;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .dropdown-item {
+    cursor: pointer;
+    padding: 2px 4px;
+    margin: 0;
+  }
+  .dropdown-item:hover {
+    background: #f0f0f0;
+  }
+</style>
+</head>
+<body>
+  <div id="resultsContainer">
+    <input type="text" id="searchUser" placeholder="Search employee..." autocomplete="off" />
+  </div>
 
-      .search-container {
-        position: relative;
-        width: 100%;
-      }
+<script>
+let users = [];
 
-      input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 14px;
-        box-sizing: border-box;
-      }
+document.addEventListener("DOMContentLoaded", async () => {
+  const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
+  const searchInput = document.getElementById("searchUser");
+  const resultsContainer = document.getElementById("resultsContainer");
 
-      ul#results {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: #fff;
-        border: 1px solid #ccc;
-        border-top: none;
-        max-height: 180px;
-        overflow-y: auto;
-        z-index: 9999;
-        display: none;
-      }
+  console.log("🔍 Jotform widget loading...");
 
-      li {
-        padding: 8px;
-        cursor: pointer;
-        border-bottom: 1px solid #eee;
-      }
+  try {
+    const res = await fetch(API_URL);
+    users = await res.json();
+    console.log(`✅ Loaded ${users.length} users`);
+  } catch (err) {
+    console.error("❌ Error fetching users:", err);
+  }
 
-      li:hover {
-        background: #f0f0f0;
-      }
+  if (!Array.isArray(users) || users.length === 0) {
+    console.warn("⚠️ No users loaded");
+    return;
+  }
 
-      .info {
-        font-size: 13px;
-        color: #444;
-        margin-top: 4px;
-        line-height: 1.4em;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="search-container">
-      <input type="text" id="search" placeholder="Search employee (Last, First)" autocomplete="off" />
-      <ul id="results"></ul>
-    </div>
-    <div id="user-info" class="info"></div>
+  searchInput.addEventListener("input", (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
+    if (!query) return;
 
-    <script>
-      const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
-      let allUsers = [];
+    const matches = users.filter(u =>
+      (u.full_name || "").toLowerCase().includes(query)
+    ).slice(0, 8);
 
-      async function loadUsers() {
-        try {
-          const res = await fetch(API_URL);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          allUsers = await res.json();
-          console.log(`✅ Loaded ${allUsers.length} users`);
-        } catch (err) {
-          console.error("❌ Error loading users:", err);
-        }
-      }
+    if (matches.length === 0) return;
 
-      function renderResults(results) {
-        const ul = document.getElementById("results");
-        ul.innerHTML = "";
-        if (!results.length) {
-          ul.style.display = "none";
-          return;
-        }
+    const dropdown = document.createElement("div");
+    dropdown.className = "dropdown";
 
-        results.forEach((user) => {
-          const li = document.createElement("li");
-          li.textContent = user.displayname;
-          li.onclick = () => selectUser(user);
-          ul.appendChild(li);
-        });
+    matches.forEach(u => {
+      const item = document.createElement("div");
+      item.className = "dropdown-item";
+      item.textContent = u.full_name || "(No Name)";
+      item.addEventListener("click", () => {
+        searchInput.value = u.full_name || "";
+        dropdown.remove();
+        console.log("✅ Selected:", u);
 
-        ul.style.display = "block";
-      }
-
-      function selectUser(user) {
-        const searchInput = document.getElementById("search");
-        searchInput.value = user.displayname;
-        document.getElementById("results").style.display = "none";
-        document.getElementById("user-info").innerHTML = `
-          <b>${user.displayname}</b><br>
-          ${user.mail || ""} • ${user.jobtitle || ""} • ${user.department || ""}
-        `;
-
-        console.log("👤 Selected User:", user);
-
-        // Send JSON to Jotform backend
-        JFCustomWidget.sendData({
-          value: JSON.stringify(user)
-        });
-
-        // Try to autofill Jotform fields
-        try {
-          const parent = window.parent.document;
-
-          const map = {
-            "#input_5": user.displayname,
-            "#input_6": user.mail,
-            "#input_7": user.jobtitle,
-            "#input_8": user.department,
-            "#input_9": user.manager,
-            "#input_10": user.managermail,
-            "#input_11": user.employeeId,
-            "#input_12": user.division
-          };
-
-          for (const [selector, value] of Object.entries(map)) {
-            const field = parent.querySelector(selector);
-            if (field && value) {
-              field.value = value;
-              field.dispatchEvent(new Event("input", { bubbles: true }));
-              console.log(`✅ Filled ${selector} = ${value}`);
-            }
-          }
-        } catch (err) {
-          console.warn("⚠️ Could not autofill parent form fields:", err);
-        }
-      }
-
-      document.getElementById("search").addEventListener("input", (e) => {
-        const query = e.target.value.trim().toLowerCase();
-        if (!query) {
-          document.getElementById("results").style.display = "none";
-          return;
+        // Autofill Jotform fields
+        const fields = {
+          "#input_5": u.full_name,
+          "#input_6": u.email,
+          "#input_7": u.job_title,
+          "#input_8": u.department,
+          "#input_9": u.manager,
+          "#input_10": u.manager_email,
+          "#input_11": u.employee_id,
+          "#input_12": u.division
+        };
+        for (const [sel, val] of Object.entries(fields)) {
+          const el = parent.document.querySelector(sel);
+          if (el) el.value = val || "";
         }
 
-        const results = allUsers.filter((u) =>
-          (u.displayname || "").toLowerCase().includes(query)
-        );
-        renderResults(results.slice(0, 10));
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!e.target.closest(".search-container")) {
-          document.getElementById("results").style.display = "none";
+        // Send data back to Jotform
+        if (window.JFCustomWidget) {
+          JFCustomWidget.sendData({
+            valid: true,
+            value: JSON.stringify(u)
+          });
         }
       });
+      dropdown.appendChild(item);
+    });
 
-      // Jotform Widget Lifecycle
-      JFCustomWidget.subscribe("ready", async function () {
-        console.log("🔌 Widget ready");
-        await loadUsers();
-      });
+    resultsContainer.appendChild(dropdown);
+  });
 
-      JFCustomWidget.subscribe("submit", function () {
-        const value = document.getElementById("search").value;
-        const found = allUsers.find(
-          (u) => (u.displayname || "").toLowerCase() === value.toLowerCase()
-        );
-        JFCustomWidget.sendSubmit({
-          valid: true,
-          value: found ? JSON.stringify(found) : ""
-        });
-      });
-    </script>
-  </body>
+  document.addEventListener("click", (e) => {
+    if (!resultsContainer.contains(e.target) && e.target !== searchInput) {
+      resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
+    }
+  });
+});
+
+// Jotform widget integration
+if (window.JFCustomWidget) {
+  JFCustomWidget.subscribe("ready", function (msg) {
+    console.log("✅ Jotform Widget Ready");
+  });
+}
+</script>
+</body>
 </html>
