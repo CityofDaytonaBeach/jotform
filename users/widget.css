@@ -1,0 +1,42 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+#resultsContainer {
+  position: relative;
+  width: 100%;
+}
+
+#searchUser {
+  width: 100%;
+  padding: 6px;
+  margin: 0;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  z-index: 9999;
+  max-height: 180px;
+  overflow-y: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dropdown-item {
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.dropdown-item:hover {
+  background: #f0f0f0;
+}
