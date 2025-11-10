@@ -1,12 +1,14 @@
 console.clear();
 console.log("🔍 Loading Employee Lookup Widget...");
 
+// ===== CONFIG =====
 const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
 let users = [];
 
 const searchInput = document.getElementById("searchUser");
 const resultsContainer = document.getElementById("resultsContainer");
 
+// ===== SAFE DATA SEND =====
 function sendWidgetData(data) {
   try {
     if (window.JFCustomWidget) JFCustomWidget.sendData(data);
@@ -15,6 +17,7 @@ function sendWidgetData(data) {
   }
 }
 
+// ===== AUTOFILL JOTFORM FIELDS =====
 function fillFormFields(user) {
   const fieldMappings = {
     input_5: user.displayname || "",
@@ -30,8 +33,10 @@ function fillFormFields(user) {
   Object.entries(fieldMappings).forEach(([id, value]) => {
     try {
       if (window.JFCustomWidget && typeof JFCustomWidget.setFieldValue === "function") {
+        // HIPAA-safe internal API call
         JFCustomWidget.setFieldValue(id, value);
       } else {
+        // fallback for non-HIPAA forms
         window.parent.postMessage({ type: "populate", qid: id, value }, "*");
       }
     } catch (err) {
@@ -42,6 +47,7 @@ function fillFormFields(user) {
   console.log("✅ Sent field data to parent form:", fieldMappings);
 }
 
+// ===== LOAD USERS =====
 async function loadUsers() {
   try {
     const res = await fetch(API_URL);
@@ -55,7 +61,8 @@ async function loadUsers() {
 
 loadUsers();
 
-searchInput.addEventListener("input", e => {
+// ===== AUTOCOMPLETE LOGIC =====
+searchInput.addEventListener("input", (e) => {
   const query = e.target.value.trim().toLowerCase();
   resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
   if (!query) return;
@@ -86,12 +93,14 @@ searchInput.addEventListener("input", e => {
   resultsContainer.appendChild(dropdown);
 });
 
-document.addEventListener("click", e => {
+// ===== CLICK OUTSIDE TO CLOSE =====
+document.addEventListener("click", (e) => {
   if (!resultsContainer.contains(e.target) && e.target !== searchInput) {
     resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
   }
 });
 
+// ===== JOTFORM WIDGET READY =====
 if (window.JFCustomWidget) {
   JFCustomWidget.subscribe("ready", function () {
     console.log("✅ Jotform Widget Ready");
