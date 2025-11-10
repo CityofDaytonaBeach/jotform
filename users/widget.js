@@ -1,5 +1,5 @@
 console.clear();
-console.log("🔍 Employee Lookup Widget Loaded");
+console.log("👤 Users Widget Loaded");
 
 // ===== CONFIG =====
 const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
@@ -17,7 +17,7 @@ function sendWidgetData(data) {
   }
 }
 
-// ===== LOAD USER DATA FROM SUPABASE =====
+// ===== LOAD USER DATA =====
 async function loadUsers() {
   try {
     const res = await fetch(API_URL);
@@ -31,7 +31,7 @@ async function loadUsers() {
 
 loadUsers();
 
-// ===== AUTOCOMPLETE LOGIC =====
+// ===== AUTOCOMPLETE =====
 let debounceTimer;
 searchInput.addEventListener("input", (e) => {
   clearTimeout(debounceTimer);
@@ -45,7 +45,6 @@ function handleSearch(query) {
   const matches = users
     .filter(u => (u.displayname || "").toLowerCase().includes(query))
     .slice(0, 8);
-
   if (!matches.length) return;
 
   const dropdown = document.createElement("div");
@@ -60,7 +59,7 @@ function handleSearch(query) {
       dropdown.remove();
       console.log("✅ Selected user:", u);
 
-      // Send selected user data to Jotform
+      // Send selected user to Jotform
       sendWidgetData({ valid: true, value: JSON.stringify(u) });
     });
     dropdown.appendChild(item);
@@ -76,10 +75,10 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ===== JOTFORM READY EVENT =====
+// ===== JOTFORM READY =====
 if (window.JFCustomWidget) {
   JFCustomWidget.subscribe("ready", function () {
-    console.log("✅ Jotform Widget Ready");
+    console.log("✅ Users Widget Ready");
     sendWidgetData({ valid: true, value: "" });
   });
 }
