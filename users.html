@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Employee Search Dropdown</title>
+  <title>Employee Search Dropdown (Debug Version)</title>
 
   <style>
     #searchBox {
@@ -49,90 +49,166 @@
   <div id="resultList"></div>
 </div>
 
+<script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+
 <script>
-  /* ----------------------------------------------------------
-     Load employees from Supabase Edge Function
-  ---------------------------------------------------------- */
-  async function loadEmployees() {
-    try {
-      const res = await fetch("https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
+/* ------------------------------------------------------------------------
+   ENVIRONMENT CHECK
+------------------------------------------------------------------------ */
+console.log("🔧 Widget script loaded.");
+console.log("🔍 Window top === Window self?", window.top === window.self ? "NOT in iframe (bad)" : "Inside iframe (good)");
 
-      const data = await res.json();
+/* ------------------------------------------------------------------------
+   LOAD EMPLOYEES FROM SUPABASE
+------------------------------------------------------------------------ */
+async function loadEmployees() {
+  console.log("🌐 Fetching employees from Supabase...");
 
-      console.log("🔍 Loaded employee dataset:", data);
+  try {
+    const res = await fetch("https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    });
 
-      return data;
-    } catch (e) {
-      console.error("Error loading employees:", e);
-      return [];
-    }
+    console.log("🌐 Supabase response status:", res.status);
+
+    const data = await res.json();
+    console.log("📦 Loaded employee dataset:", data);
+
+    return data;
+  } catch (e) {
+    console.error("❌ Error loading employees:", e);
+    return [];
   }
+}
 
-  /* ----------------------------------------------------------
-     Build interactive search dropdown
-  ---------------------------------------------------------- */
-  async function initSearch() {
-    const employees = await loadEmployees();
+/* ------------------------------------------------------------------------
+   SEARCH UI + FILTERING + SELECTION LOGGING
+------------------------------------------------------------------------ */
+async function initSearch() {
+  console.log("🔧 initSearch() started");
 
-    const searchBox = document.getElementById("searchBox");
-    const resultList = document.getElementById("resultList");
+  const employees = await loadEmployees();
+  console.log("📊 Total employees loaded:", employees.length);
 
-    searchBox.addEventListener("input", () => {
-      const query = searchBox.value.toLowerCase().trim();
-      resultList.innerHTML = "";
+  const searchBox = document.getElementById("searchBox");
+  const resultList = document.getElementById("resultList");
 
-      if (!query) {
+  searchBox.addEventListener("input", () => {
+    const query = searchBox.value.toLowerCase().trim();
+    resultList.innerHTML = "";
+
+    console.log("🔎 Search query:", query);
+
+    if (!query) {
+      console.log("🔕 Query empty, hiding results.");
+      resultList.style.display = "none";
+      return;
+    }
+
+    const filtered = employees.filter(emp =>
+      emp.displayname.toLowerCase().includes(query)
+    );
+
+    console.log("📉 Filtered results:", filtered);
+
+    filtered.forEach(emp => {
+      const div = document.createElement("div");
+      div.classList.add("result-item");
+      div.textContent = emp.displayname;
+
+      div.onclick = () => {
+        console.log("👤 Employee selected:", emp);
+
+        searchBox.value = emp.displayname;
         resultList.style.display = "none";
-        return;
-      }
 
-      const filtered = employees.filter(emp =>
-        emp.displayname.toLowerCase().includes(query)
-      );
-
-      filtered.forEach(emp => {
-        const div = document.createElement("div");
-        div.classList.add("result-item");
-        div.textContent = emp.displayname;
-
-        div.onclick = () => {
-          searchBox.value = emp.displayname;
-          resultList.style.display = "none";
-
-          console.log("👤 Employee selected:", emp);
-
-          // Autopopulated fields (console logging included)
-          const mappedFields = {
-            fullName: emp.displayname,
-            email: emp.mail,
-            jobTitle: emp.jobtitle,
-            department: emp.department,
-            manager: emp.manager,
-            managerEmail: emp.managermail,
-            employeeId: emp.employeeId,
-            division: emp.division
-          };
-
-          console.log("📌 Autopopulated fields:", mappedFields);
+        const mappedFields = {
+          fullName: emp.displayname,
+          email: emp.mail,
+          jobTitle: emp.jobtitle,
+          department: emp.department,
+          manager: emp.manager,
+          managerEmail: emp.managermail,
+          employeeId: emp.employeeId,
+          division: emp.division
         };
 
-        resultList.appendChild(div);
-      });
+        console.log("📌 Autopopulating these fields:", mappedFields);
 
-      resultList.style.display = filtered.length ? "block" : "none";
+        autopopulateFields(mappedFields);
+      };
+
+      resultList.appendChild(div);
     });
 
-    document.addEventListener("click", e => {
-      if (!e.target.closest(".wrapper")) {
-        resultList.style.display = "none";
-      }
-    });
-  }
+    resultList.style.display = filtered.length ? "block" : "none";
+  });
+
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".wrapper")) {
+      resultList.style.display = "none";
+    }
+  });
+}
+
+/* ------------------------------------------------------------------------
+   AUTOFILL LOGIC + DEBUGGING JOTFORM API CALLS
+------------------------------------------------------------------------ */
+function autopopulateFields(mappedFields) {
+  console.log("🚀 autopopulateFields() called.");
+
+  const fieldMap = {
+    fullName: "input_5",
+    email: "input_6",
+    jobTitle: "input_7",
+    department: "input_8",
+    manager: "input_9",
+    managerEmail: "input_10",
+    employeeId: "input_11",
+    division: "input_12"
+  };
+
+  Object.entries(mappedFields).forEach(([key, value]) => {
+    const fieldId = fieldMap[key];
+
+    console.log(`➡️ Preparing to populate ${key} (${fieldId}) with value:`, value);
+
+    if (!fieldId) {
+      console.warn("⚠️ No field ID found for:", key);
+      return;
+    }
+
+    try {
+      console.log("📨 Calling JFCustomWidget.storeToField:", fieldId, value);
+      JFCustomWidget.storeToField(fieldId, value);
+      console.log("✅ Field updated successfully.");
+    } catch (e) {
+      console.error("❌ JotForm rejected field update:", e);
+    }
+  });
+}
+
+/* ------------------------------------------------------------------------
+   JOTFORM WIDGET BINDINGS
+------------------------------------------------------------------------ */
+JFCustomWidget.subscribe("ready", function (data) {
+  console.log("🟢 JotForm widget READY");
+  console.log("📦 Widget initial data from form:", data);
 
   initSearch();
+});
+
+JFCustomWidget.subscribe("submit", function () {
+  console.log("📨 JotForm submit event triggered.");
+
+  JFCustomWidget.sendSubmit({
+    valid: true,
+    value: "employee_selected"
+  });
+
+  console.log("📤 Sent widget submit payload.");
+});
 </script>
 
 </body>
