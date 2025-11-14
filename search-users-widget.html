@@ -1,166 +1,169 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Employee Lookup Widget</title>
-<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
-<style>
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-  }
-  #resultsContainer {
-    position: relative;
-    width: 100%;
-  }
-  #searchUser {
-    width: 100%;
-    padding: 6px;
-    margin: 0;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  .dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-top: none;
-    z-index: 9999;
-    max-height: 180px;
-    overflow-y: auto;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  .dropdown-item {
-    cursor: pointer;
-    padding: 6px 8px;
-  }
-  .dropdown-item:hover {
-    background: #f0f0f0;
-  }
-</style>
-</head>
+<!doctype html>
+<html>
+  <head>
+    <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="pragma" content="no-cache" />
+  </head>
 
-<body>
-<div id="resultsContainer">
-  <input type="text" id="searchUser" placeholder="Search employee..." autocomplete="off" />
-</div>
+  <body>
+    <input 
+      id="employeeSearch" 
+      placeholder="Search employee..." 
+      autocomplete="off"
+      style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;"
+    />
 
-<script>
-console.clear();
-console.log("🔍 Loading Employee Lookup Widget...");
+    <div id="dropdown"></div>
 
-// ===== CONFIG =====
-const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users"; // Supabase endpoint
-let users = [];
+    <script type="text/javascript">
+      const API_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
+      let users = [];
+      let selectedEmployee = null;
 
-const searchInput = document.getElementById("searchUser");
-const resultsContainer = document.getElementById("resultsContainer");
-
-// ===== SAFE DATA SEND =====
-function sendWidgetData(data) {
-  try {
-    if (window.JFCustomWidget) JFCustomWidget.sendData(data);
-  } catch (err) {
-    console.warn("⚠ sendData failed:", err);
-  }
-}
-
-// ===== AUTOFILL JOTFORM FIELDS =====
-function fillFormFields(user) {
-  const fieldMappings = {
-    'input_5': user.displayname || '',
-    'input_6': user.mail || '',
-    'input_7': user.jobtitle || '',
-    'input_8': user.department || '',
-    'input_9': user.manager || '',
-    'input_10': user.managermail || '',
-    'input_11': user.employeeId || '',
-    'input_12': user.division || ''
-  };
-
-  Object.entries(fieldMappings).forEach(([fieldId, value]) => {
-    try {
-      if (window.JFCustomWidget && typeof JFCustomWidget.setFieldValue === "function") {
-        // HIPAA-safe internal API call
-        JFCustomWidget.setFieldValue(fieldId, value);
-      } else {
-        // Non-HIPAA fallback
-        window.parent.postMessage({ type: 'populate', qid: fieldId, value }, '*');
+      async function loadUsers() {
+        try {
+          const res = await fetch(API_URL);
+          users = await res.json();
+          console.log("📦 Loaded employees:", users);
+        } catch (err) {
+          console.error("❌ Error loading users:", err);
+        }
       }
-    } catch (err) {
-      console.warn("⚠ Failed to set field:", fieldId, err);
-    }
-  });
+      loadUsers();
 
-  console.log("✅ Sent field data to parent form:", fieldMappings);
-}
+      function createDropdown(matches) {
+        const container = document.getElementById("dropdown");
+        container.innerHTML = "";
+        container.style.position = "relative";
 
-// ===== LOAD USERS FROM SUPABASE =====
-async function loadUsers() {
-  try {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-    users = await res.json();
-    console.log(`✅ Loaded ${users.length} users`);
-  } catch (err) {
-    console.error("❌ Error fetching users:", err);
-  }
-}
+        const list = document.createElement("div");
+        list.style.position = "absolute";
+        list.style.top = "100%";
+        list.style.left = "0";
+        list.style.right = "0";
+        list.style.border = "1px solid #ccc";
+        list.style.background = "#fff";
+        list.style.zIndex = "9999";
+        list.style.maxHeight = "180px";
+        list.style.overflowY = "auto";
 
-loadUsers();
+        matches.forEach(u => {
+          const item = document.createElement("div");
+          item.textContent = u.displayname || "(No Name)";
+          item.style.padding = "6px";
+          item.style.cursor = "pointer";
 
-// ===== AUTOCOMPLETE DROPDOWN =====
-searchInput.addEventListener("input", (e) => {
-  const query = e.target.value.trim().toLowerCase();
-  resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
-  if (!query) return;
+          item.addEventListener("click", () => {
+            console.log("🟢 Selected employee:", u);
+            selectedEmployee = u;
 
-  const matches = users
-    .filter(u => (u.displayname || "").toLowerCase().includes(query))
-    .slice(0, 8);
-  if (!matches.length) return;
+            document.getElementById("employeeSearch").value = u.displayname;
+            container.innerHTML = "";
 
-  const dropdown = document.createElement("div");
-  dropdown.className = "dropdown";
+            autoFillEmployee(u);
+          });
 
-  matches.forEach(u => {
-    const item = document.createElement("div");
-    item.className = "dropdown-item";
-    item.textContent = u.displayname || "(No Name)";
-    item.addEventListener("click", () => {
-      searchInput.value = u.displayname || "";
-      dropdown.remove();
-      console.log("✅ Selected user:", u);
+          item.addEventListener("mouseover", () => {
+            item.style.background = "#f0f0f0";
+          });
+          item.addEventListener("mouseout", () => {
+            item.style.background = "#fff";
+          });
 
-      fillFormFields(u);
-      sendWidgetData({ valid: true, value: JSON.stringify(u) });
-    });
-    dropdown.appendChild(item);
-  });
+          list.appendChild(item);
+        });
 
-  resultsContainer.appendChild(dropdown);
-});
+        container.appendChild(list);
+      }
 
-// ===== CLICK OUTSIDE TO CLOSE =====
-document.addEventListener("click", (e) => {
-  if (!resultsContainer.contains(e.target) && e.target !== searchInput) {
-    resultsContainer.querySelectorAll(".dropdown").forEach(d => d.remove());
-  }
-});
+      function autoFillEmployee(emp) {
+        // Build pipe-delimited output for the widget's value
+        const output = [
+          emp.displayname || "",
+          emp.email || "",
+          emp.title || "",
+          emp.department || "",
+          emp.manager || "",
+          emp.manager_email || "",
+          emp.employee_id || "",
+          emp.division || ""
+        ].join("|");
 
-// ===== JOTFORM WIDGET READY =====
-if (window.JFCustomWidget) {
-  JFCustomWidget.subscribe("ready", function() {
-    console.log("✅ Jotform Widget Ready");
-    sendWidgetData({ valid: true, value: "" });
-  });
-}
-</script>
-</body>
+        console.log("📤 Widget Output Value:", output);
+
+        // Autofill other fields via Jotform-supported API
+        const fieldMap = [
+          { id: "6", value: emp.displayname || "" },       // Full Name
+          { id: "7", value: emp.email || "" },            // Email
+          { id: "8", value: emp.title || "" },            // Job Title
+          { id: "9", value: emp.department || "" },       // Department
+          { id: "10", value: emp.manager || "" },         // Manager
+          { id: "11", value: emp.manager_email || "" },   // Manager Email
+          { id: "12", value: emp.employee_id || "" },     // Employee ID
+          { id: "13", value: emp.division || "" }         // Division
+        ];
+
+        console.log("📥 Autofilling form fields:", fieldMap);
+
+        JFCustomWidget.setFieldsValueById(fieldMap);
+
+        // Store widget’s own value
+        JFCustomWidget.storeToField("widget_input", output);
+      }
+
+      function GCLIDExample() {
+        this.init = init;
+        this.getData = getData;
+
+        function init(formData) {
+          console.log("🟦 Widget Ready — Initialization Complete");
+
+          document
+            .getElementById("employeeSearch")
+            .addEventListener("input", (e) => {
+              const q = e.target.value.toLowerCase().trim();
+              if (!q) return (document.getElementById("dropdown").innerHTML = "");
+
+              const matches = users
+                .filter(u => (u.displayname || "").toLowerCase().includes(q))
+                .slice(0, 8);
+
+              console.log("🔎 Search:", q, "| Matches:", matches.length);
+
+              createDropdown(matches);
+            });
+        }
+
+        function getData() {
+          const value = selectedEmployee
+            ? [
+                selectedEmployee.displayname,
+                selectedEmployee.email,
+                selectedEmployee.title,
+                selectedEmployee.department,
+                selectedEmployee.manager,
+                selectedEmployee.manager_email,
+                selectedEmployee.employee_id,
+                selectedEmployee.division
+              ].join("|")
+            : "";
+
+          console.log("📨 sendSubmit payload:", value);
+
+          return { valid: true, value: value };
+        }
+      }
+
+      JFCustomWidget.subscribe("ready", function (data) {
+        const widget = new GCLIDExample();
+        widget.init(data);
+
+        JFCustomWidget.subscribe("submit", function () {
+          JFCustomWidget.sendSubmit(widget.getData());
+        });
+      });
+    </script>
+  </body>
 </html>
