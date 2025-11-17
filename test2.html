@@ -50,9 +50,9 @@
 </div>
 
 <script>
-/*-------------------------------------------------------------------------
-   CORE WIDGET OBJECT
--------------------------------------------------------------------------*/
+/*--------------------------------------------------------------
+   EMPLOYEE SEARCH + AUTOFILL WIDGET
+--------------------------------------------------------------*/
 function EmployeeWidget() {
 
   this.init = init;
@@ -61,48 +61,76 @@ function EmployeeWidget() {
   let employees = [];
   let selectedEmployee = null;
 
-  /*-------------------------------------------------------
-     INITIALIZATION LIFECYCLE (Jotform-ready)
-  -------------------------------------------------------*/
+  /*----------------------------------------------------------
+     INIT: Called after Jotform iframe is ready
+  ----------------------------------------------------------*/
   async function init(formData) {
-    console.log("🔧 EmployeeWidget.init() — operationalizing widget instance.");
+    console.log("🟢 Widget initialized.");
 
     employees = await loadEmployees();
-    console.log("📊 Employees loaded:", employees.length);
+    console.log("🔥 EMPLOYEE PAYLOAD:", employees);
+
+    if (!employees || employees.length === 0) {
+      console.error("❌ No employees loaded. Supabase or CORS issue likely.");
+    }
 
     activateSearch();
   }
 
-  /*-------------------------------------------------------
-     SUPABASE DATA INGESTION
-  -------------------------------------------------------*/
+  /*----------------------------------------------------------
+     LOAD EMPLOYEES FROM SUPABASE
+  ----------------------------------------------------------*/
   async function loadEmployees() {
     try {
-      const res = await fetch("https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users");
+      const res = await fetch(
+        "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users",
+        { method: "GET", headers: { "Content-Type": "application/json" } }
+      );
+
+      if (!res.ok) {
+        console.error("❌ Supabase error status:", res.status);
+        return [];
+      }
+
       const data = await res.json();
       return data;
     } catch (err) {
-      console.error("❌ Employee fetch failed:", err);
+      console.error("❌ Network or CORS error:", err);
       return [];
     }
   }
 
-  /*-------------------------------------------------------
-     AUTOCOMPLETE SEARCH EXPERIENCE
-  -------------------------------------------------------*/
+  /*----------------------------------------------------------
+     AUTOCOMPLETE SEARCH BEHAVIOR
+  ----------------------------------------------------------*/
   function activateSearch() {
     const searchBox = document.getElementById("searchBox");
     const resultList = document.getElementById("resultList");
+
+    console.log("🔧 Search activated. Employee count:", employees.length);
 
     searchBox.addEventListener("input", () => {
       const query = searchBox.value.toLowerCase().trim();
       resultList.innerHTML = "";
 
-      if (!query) return (resultList.style.display = "none");
+      console.log("🔎 User typed:", query);
+
+      if (!query) {
+        resultList.style.display = "none";
+        return;
+      }
 
       const filtered = employees.filter(emp =>
+        emp.displayname &&
         emp.displayname.toLowerCase().includes(query)
       );
+
+      console.log("📉 Filtered matches:", filtered);
+
+      if (filtered.length === 0) {
+        resultList.style.display = "none";
+        return;
+      }
 
       filtered.forEach(emp => {
         const div = document.createElement("div");
@@ -110,6 +138,8 @@ function EmployeeWidget() {
         div.textContent = emp.displayname;
 
         div.onclick = () => {
+          console.log("👤 Employee SELECTED:", emp);
+
           selectedEmployee = emp;
           searchBox.value = emp.displayname;
           resultList.style.display = "none";
@@ -120,26 +150,28 @@ function EmployeeWidget() {
         resultList.appendChild(div);
       });
 
-      resultList.style.display = filtered.length ? "block" : "none";
+      resultList.style.display = "block";
     });
 
     document.addEventListener("click", e => {
-      if (!e.target.closest(".wrapper")) resultList.style.display = "none";
+      if (!e.target.closest(".wrapper")) {
+        resultList.style.display = "none";
+      }
     });
   }
 
-  /*-------------------------------------------------------
-     SEND SELECTED EMPLOYEE TO JOTFORM FIELDS
-  -------------------------------------------------------*/
+  /*----------------------------------------------------------
+     AUTOFILL INTO JOTFORM FIELDS
+  ----------------------------------------------------------*/
   function autopopulate(emp) {
-    console.log("🚀 Autopopulating Jotform fields with:", emp);
+    console.log("🚀 Autopopulating fields with:", emp);
 
     const fieldMap = [
-      { id: "input_5", value: emp.displayname },
-      { id: "input_6", value: emp.mail },
-      { id: "input_7", value: emp.jobtitle },
-      { id: "input_8", value: emp.department },
-      { id: "input_9", value: emp.manager },
+      { id: "input_5",  value: emp.displayname }, // Full Name
+      { id: "input_6",  value: emp.mail },
+      { id: "input_7",  value: emp.jobtitle },
+      { id: "input_8",  value: emp.department },
+      { id: "input_9",  value: emp.manager },
       { id: "input_10", value: emp.managermail },
       { id: "input_11", value: emp.employeeId },
       { id: "input_12", value: emp.division }
@@ -147,15 +179,15 @@ function EmployeeWidget() {
 
     try {
       JFCustomWidget.setFieldsValueById(fieldMap);
-      console.log("✅ Field mapping executed.");
-    } catch (err) {
-      console.error("❌ Jotform autopopulation failed:", err);
+      console.log("✅ Autopopulation completed.");
+    } catch (e) {
+      console.error("❌ Jotform autopopulation failed:", e);
     }
   }
 
-  /*-------------------------------------------------------
-     WIDGET VALUE DURING FORM SUBMISSION
-  -------------------------------------------------------*/
+  /*----------------------------------------------------------
+     SUBMIT PAYLOAD
+  ----------------------------------------------------------*/
   function getData() {
     return {
       valid: true,
@@ -164,9 +196,9 @@ function EmployeeWidget() {
   }
 }
 
-/*-----------------------------------------------------------------------
-   JOTFORM WIDGET BINDING
------------------------------------------------------------------------*/
+/*--------------------------------------------------------------
+   JOTFORM WIDGET EVENT BINDINGS
+--------------------------------------------------------------*/
 JFCustomWidget.subscribe("ready", function (data) {
   const widget = new EmployeeWidget();
   widget.init(data);
