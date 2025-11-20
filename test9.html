@@ -7,45 +7,60 @@
 <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 
 <style>
-  body {
-    margin: 0;
-    padding: 10px;
-    font-family: Arial, sans-serif;
-  }
+/* Overall page */
+body {
+  margin: 0;
+  padding: 10px;
+  font-family: "Inter", "Arial", sans-serif;
+  color: #2C3345;
+  background: transparent;
+}
 
-  #resultsContainer {
-    position: relative;
-    width: 100%;
-  }
+/* Input field */
+#searchUser {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #D0D0D0;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
 
-  #searchUser {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
+#searchUser:focus {
+  outline: none;
+  border-color: #6E8EEB;
+  box-shadow: 0 0 0 2px rgba(110, 142, 235, 0.2);
+}
 
-  .dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #ccc;
-    z-index: 9999;
-    max-height: 180px;
-    overflow-y: auto;
-  }
+/* Dropdown container */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #D0D0D0;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
 
-  .dropdown-item {
-    padding: 6px;
-    cursor: pointer;
-  }
+/* Dropdown items */
+.dropdown-item {
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2C3345;
+  transition: background 0.15s ease;
+}
 
-  .dropdown-item:hover {
-    background: #eee;
-  }
-
+.dropdown-item:hover {
+  background: #F1F3F9;
+}
 </style>
 </head>
 
