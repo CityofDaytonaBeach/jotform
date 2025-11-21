@@ -1,233 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Employee Autofill Widget</title>
+    <meta charset="UTF-8">
 
-<!-- Jotform Widget Runtime -->
-<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+    <!-- Load JotForm Widget API -->
+    <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 
-<style>
-    /* Inherit Jotform's theme completely */
-    body {
-        margin: 0;
-        padding: 0;
-        background: transparent;
-    }
+    <!-- Force Jotform default input styling -->
+    <style>
+        body {
+            font-family: Inter, Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            background: transparent;
+        }
 
-    #resultsContainer {
-        position: relative;
-        width: 100%;
-    }
+        /* Match Jotform V4 fields */
+        .jf-field .form-textbox {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d0d0d7;
+            border-radius: 4px;
+            font-size: 15px;
+        }
 
-    /* Use Jotform's built-in styling */
-    #searchUser {
-        width: 100%;
-        box-sizing: border-box;
-    }
+        #resultsContainer {
+            width: 100%;
+        }
 
-    /* Minimal dropdown styling so it displays properly, 
-       but still inherits all Jotform colors + fonts */
-    .dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: var(--form-background-color, #fff);
-        border: 1px solid var(--form-border-color, #ccc);
-        border-radius: 4px;
-        max-height: 220px;
-        overflow-y: auto;
-        z-index: 99999;
-    }
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ccc;
+            z-index: 99999;
+            max-height: 180px;
+            overflow-y: auto;
+            border-radius: 4px;
+        }
 
-    .dropdown-item {
-        padding: 8px;
-        cursor: pointer;
-        font-size: inherit;
-        color: inherit;
-    }
+        .dropdown-item {
+            padding: 8px;
+            cursor: pointer;
+        }
 
-    .dropdown-item:hover {
-        background: var(--form-hover-color, #f3f3f3);
-    }
-</style>
+        .dropdown-item:hover {
+            background: #f5f5f7;
+        }
+    </style>
 </head>
 
 <body>
-
-<div id="resultsContainer" class="form-input-wide">
-    <input 
+<div id="resultsContainer" class="jf-field form-input-wide">
+    <input
         id="searchUser"
         type="text"
+        class="form-textbox"
         placeholder="Search employee..."
         autocomplete="off"
-        class="form-textbox form-autocomplete"
-    >
+    />
 </div>
 
 <script>
+/* ----------------------------------------------------------
+   CONFIGURATION
+---------------------------------------------------------- */
+const SUPABASE_URL = "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
 
-/* ===========================================================
-   CONFIG
-=========================================================== */
-
-const SUPABASE_URL =
-  "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/users";
-
-let users = [];
-let selectedUser = null;
-let jotformIsReady = false;
-
-/* FIELD IDS: 4 → 11 */
 const fieldMap = {
-    fullName: "4",
-    email: "5",
-    jobTitle: "6",
-    department: "7",
-    manager: "8",
-    managerEmail: "9",
-    employeeId: "10",
-    division: "11"
+    fullName: 4,
+    email: 5,
+    jobTitle: 6,
+    department: 7,
+    manager: 8,
+    managerEmail: 9,
+    employeeId: 10,
+    division: 11
 };
 
-/* ===========================================================
-   DATA LOADING
-=========================================================== */
+let employees = [];
+let selected = null;
 
+/* ----------------------------------------------------------
+   LOAD EMPLOYEE DATA
+---------------------------------------------------------- */
 async function loadEmployees() {
     try {
         const res = await fetch(SUPABASE_URL);
-        users = await res.json();
+        employees = await res.json();
+
+        console.log("✔ Employees loaded:", employees.length);
     } catch (err) {
-        console.error("Error loading Supabase employees:", err);
+        console.error("❌ Failed to fetch Supabase data:", err);
     }
 }
 
-/* ===========================================================
-   AUTOCOMPLETE SEARCH UI
-=========================================================== */
+loadEmployees();
 
-const searchBox = document.getElementById("searchUser");
+/* ----------------------------------------------------------
+   AUTOCOMPLETE / MATCHING
+---------------------------------------------------------- */
+const input = document.getElementById("searchUser");
 const container = document.getElementById("resultsContainer");
-let debounceTimer = null;
+let timer = null;
 
-searchBox.addEventListener("input", e => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        handleSearch(e.target.value.trim().toLowerCase());
-    }, 150);
+input.addEventListener("input", (e) => {
+    clearTimeout(timer);
+    const value = e.target.value.trim().toLowerCase();
+
+    timer = setTimeout(() => searchEmployees(value), 150);
 });
 
-document.addEventListener("click", e => {
-    if (!container.contains(e.target)) removeDropdowns();
-});
+function searchEmployees(query) {
+    container.querySelectorAll(".dropdown").forEach(d => d.remove());
 
-function removeDropdowns() {
-    container.querySelectorAll(".dropdown").forEach(el => el.remove());
-}
+    if (!query) return;
 
-function handleSearch(rawQuery) {
-    removeDropdowns();
-    if (!rawQuery) return;
-
-    const safeQuery = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-    const matches = users
-        .filter(u =>
-            (u.displayname || "").toLowerCase().includes(safeQuery)
+    const matches = employees
+        .filter(emp =>
+            (emp.displayname || "").toLowerCase().includes(query)
         )
-        .slice(0, 10);
+        .slice(0, 8);
 
     if (!matches.length) return;
 
     const dd = document.createElement("div");
     dd.className = "dropdown";
 
-    matches.forEach(u => {
+    matches.forEach(emp => {
         const item = document.createElement("div");
         item.className = "dropdown-item";
-        item.textContent = u.displayname;
+        item.textContent = emp.displayname;
 
         item.onclick = () => {
-            clearTimeout(debounceTimer);
-            selectedUser = u;
-            searchBox.value = u.displayname;
-            removeDropdowns();
-            autofillFields(u);
+            selected = emp;
+            input.value = emp.displayname;
+            dd.remove();
+            autofill(emp);
         };
 
         dd.appendChild(item);
     });
 
     container.appendChild(dd);
-    autoResizeFrame();
 }
 
-/* ===========================================================
-   AUTOFILL FIELDS IN JOTFORM
-=========================================================== */
+/* ----------------------------------------------------------
+   AUTOFILL INTO JOTFORM
+---------------------------------------------------------- */
+function autofill(emp) {
 
-function autofillFields(u) {
+    const data = [
+        { id: fieldMap.fullName, value: emp.displayname },
+        { id: fieldMap.email, value: emp.mail },
+        { id: fieldMap.jobTitle, value: emp.jobtitle },
+        { id: fieldMap.department, value: emp.department },
+        { id: fieldMap.manager, value: emp.manager },
+        { id: fieldMap.managerEmail, value: emp.managermail },
+        { id: fieldMap.employeeId, value: emp.employeeId },
+        { id: fieldMap.division, value: emp.division }
+    ];
 
-    if (!jotformIsReady) return;
-
-    const payload = {
-        [fieldMap.fullName]: u.displayname || "",
-        [fieldMap.email]: u.mail || "",
-        [fieldMap.jobTitle]: u.jobtitle || "",
-        [fieldMap.department]: u.department || "",
-        [fieldMap.manager]: u.manager || "",
-        [fieldMap.managerEmail]: u.managermail || "",
-        [fieldMap.employeeId]: u.employeeId || "",
-        [fieldMap.division]: u.division || ""
-    };
+    console.log("➡ Pushing data to Jotform:", data);
 
     try {
-        JFCustomWidget.setFieldsValueById(payload);
+        JFCustomWidget.setFieldsValueById(data);
     } catch (err) {
-        console.error("setFieldsValueById error:", err);
+        console.error("❌ setFieldsValueById failed:", err);
     }
 
-    // Update widget's own value
-    JFCustomWidget.sendData({
-        valid: true,
-        value: u.displayname || ""
-    });
-
-    autoResizeFrame();
+    // Widget value
+    JFCustomWidget.sendData({ valid: true, value: emp.displayname });
 }
 
-function autoResizeFrame() {
-    setTimeout(() => {
-        JFCustomWidget.requestFrameResize({
-            height: document.documentElement.scrollHeight + 20
-        });
-    }, 50);
-}
-
-/* ===========================================================
-   JOTFORM EVENTS
-=========================================================== */
-
-JFCustomWidget.subscribe("ready", async () => {
-    jotformIsReady = true;
-
-    await loadEmployees();
-
-    // Initial handshake
+/* ----------------------------------------------------------
+   JOTFORM WIDGET EVENTS
+---------------------------------------------------------- */
+JFCustomWidget.subscribe("ready", function () {
+    console.log("✔ Widget ready");
     JFCustomWidget.sendData({ valid: true, value: "" });
-
-    autoResizeFrame();
 });
 
-JFCustomWidget.subscribe("submit", () => {
+JFCustomWidget.subscribe("submit", function () {
     JFCustomWidget.sendSubmit({
         valid: true,
-        value: selectedUser ? selectedUser.displayname : ""
+        value: selected ? selected.displayname : ""
     });
 });
-
 </script>
 </body>
 </html>
