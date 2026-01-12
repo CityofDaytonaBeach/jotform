@@ -1,0 +1,53 @@
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.widget-container {
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.results {
+  margin-top: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.result {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.result:hover,
+.result.selected {
+  background-color: #f0f2f5;
+}
+
+.empty {
+  padding: 8px;
+  color: #666;
+  font-size: 13px;
+}
+
+.status {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.status.error {
+  color: #c0392b;
+}
+
+.status.success {
+  color: #2e7d32;
+}
