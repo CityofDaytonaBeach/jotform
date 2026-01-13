@@ -4,6 +4,7 @@
 function flatten(obj, prefix = "", out = {}) {
   for (const key in obj) {
     if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
+
     const val = obj[key];
     const path = prefix ? `${prefix}.${key}` : key;
 
@@ -25,7 +26,7 @@ function debounce(fn, delay = 150) {
 }
 
 // ----------------------------------
-// Build Field-ID Mappings from Settings
+// Build mappings DIRECTLY from settings
 // ----------------------------------
 function buildMappings(settings) {
   const mappings = [];
@@ -34,12 +35,20 @@ function buildMappings(settings) {
     const jsonKey = settings[`map${i}_jsonKey`];
     const fieldId = settings[`map${i}_fieldId`];
 
-    if (jsonKey && fieldId) {
-      mappings.push({
-        jsonKey: jsonKey.trim(),
-        fieldId: fieldId.trim()
-      });
+    // Ignore empty or placeholder defaults
+    if (
+      !jsonKey ||
+      !fieldId ||
+      jsonKey === `map${i}_jsonKey` ||
+      fieldId === `map${i}_fieldId`
+    ) {
+      continue;
     }
+
+    mappings.push({
+      jsonKey: jsonKey.trim(),
+      fieldId: fieldId.trim()
+    });
   }
 
   return mappings;
@@ -51,6 +60,7 @@ function buildMappings(settings) {
 JFCustomWidget.subscribe("ready", async () => {
   const settings = JFCustomWidget.getWidgetSettings() || {};
 
+  // --- REQUIRED SETTINGS ---
   const jsonURL = settings.jsonURL;
   const searchKey = (settings.searchKey || "").trim();
   const idKey = (settings.idKey || searchKey).trim();
@@ -59,18 +69,22 @@ JFCustomWidget.subscribe("ready", async () => {
   const minChars = Number(settings.minChars || 2);
 
   if (!jsonURL || !searchKey || !idKey) {
-    console.error("Missing required widget parameters", settings);
+    console.error("Widget settings missing required values", settings);
     return;
   }
 
+  // --- FIELD MAPPINGS (SOURCE OF TRUTH) ---
   const FIELD_MAPPINGS = buildMappings(settings);
 
+  console.log("Resolved field mappings:", FIELD_MAPPINGS);
+
+  // --- DOM ---
   const input = document.getElementById("searchBox");
   const results = document.getElementById("results");
   const statusEl = document.getElementById("status");
   const container = document.getElementById("widget");
 
-  if (widgetWidth) {
+  if (widgetWidth && container) {
     container.style.maxWidth = widgetWidth;
   }
 
@@ -95,7 +109,7 @@ JFCustomWidget.subscribe("ready", async () => {
   }
 
   // ----------------------------------
-  // Load Data
+  // Load JSON
   // ----------------------------------
   async function loadData() {
     try {
@@ -113,13 +127,13 @@ JFCustomWidget.subscribe("ready", async () => {
 
       resize();
     } catch (err) {
-      console.error(err);
+      console.error("JSON load failed", err);
       setStatus("Failed to load data.", "error");
     }
   }
 
   // ----------------------------------
-  // Search
+  // Search (STRICT searchKey)
   // ----------------------------------
   function search() {
     const q = input.value.trim().toLowerCase();
@@ -162,36 +176,48 @@ JFCustomWidget.subscribe("ready", async () => {
   }
 
   // ----------------------------------
-  // Selection + ID-Based Population
+  // Selection + STRICT MAPPING EXECUTION
   // ----------------------------------
   function selectEntry(entry) {
     const flat = entry.flat;
     const identifier = flat[idKey];
 
     if (identifier == null) {
-      setStatus(`Missing ID field: ${idKey}`, "error");
+      setStatus(`ID key not found: ${idKey}`, "error");
       return;
     }
 
-    const byId = [];
+    const payload = [];
 
     FIELD_MAPPINGS.forEach(map => {
       const value = flat[map.jsonKey];
-      if (value != null) {
-        byId.push({ id: map.fieldId, value });
+
+      console.log(
+        `Mapping check → JSON key "${map.jsonKey}"`,
+        value,
+        `→ Field "${map.fieldId}"`
+      );
+
+      if (value !== undefined && value !== null) {
+        payload.push({
+          id: map.fieldId,
+          value: String(value)
+        });
       }
     });
 
-    if (byId.length) {
-      JFCustomWidget.setFieldsValueById(byId);
+    console.log("Final population payload:", payload);
+
+    if (payload.length) {
+      JFCustomWidget.setFieldsValueById(payload);
     }
 
-    let value;
-    if (returnFormat === "json") value = entry.item;
-    else if (returnFormat === "flat") value = flat;
-    else value = identifier;
+    let returnValue;
+    if (returnFormat === "json") returnValue = entry.item;
+    else if (returnFormat === "flat") returnValue = flat;
+    else returnValue = identifier;
 
-    JFCustomWidget.sendData({ value });
+    JFCustomWidget.sendData({ value: returnValue });
 
     selectedEntry = entry;
     input.value = displayLabel(entry);
