@@ -26,28 +26,29 @@ function debounce(fn, delay = 150) {
 }
 
 // ----------------------------------
-// Build mappings STRICTLY from settings
+// Build mappings from widget settings
+// EXPECTS QUESTION IDs (e.g. "4")
 // ----------------------------------
 function buildMappings(settings) {
   const mappings = [];
 
   for (let i = 1; i <= 15; i++) {
     const jsonKey = settings[`map${i}_jsonKey`];
-    const fieldId = settings[`map${i}_fieldId`];
+    const questionId = settings[`map${i}_fieldId`];
 
     // Ignore empty or placeholder defaults
     if (
       !jsonKey ||
-      !fieldId ||
+      !questionId ||
       jsonKey === `map${i}_jsonKey` ||
-      fieldId === `map${i}_fieldId`
+      questionId === `map${i}_fieldId`
     ) {
       continue;
     }
 
     mappings.push({
       jsonKey: jsonKey.trim(),
-      fieldId: fieldId.trim()
+      questionId: String(questionId).trim()
     });
   }
 
@@ -74,7 +75,7 @@ JFCustomWidget.subscribe("ready", async () => {
   }
 
   const FIELD_MAPPINGS = buildMappings(settings);
-  console.log("Resolved mappings:", FIELD_MAPPINGS);
+  console.log("Resolved QUESTION-ID mappings:", FIELD_MAPPINGS);
 
   // --- DOM ---
   const input = document.getElementById("searchBox");
@@ -174,7 +175,7 @@ JFCustomWidget.subscribe("ready", async () => {
   }
 
   // ----------------------------------
-  // Selection + ID-based population
+  // Selection + QUESTION-ID population
   // ----------------------------------
   function selectEntry(entry) {
     const flat = entry.flat;
@@ -191,26 +192,23 @@ JFCustomWidget.subscribe("ready", async () => {
       const value = flat[map.jsonKey];
 
       console.log(
-        `Mapping → ${map.jsonKey}:`,
+        `Mapping → JSON key "${map.jsonKey}"`,
         value,
-        `→ ${map.fieldId}`
+        `→ Question ID "${map.questionId}"`
       );
 
       if (value !== undefined && value !== null) {
         payload.push({
-          id: map.fieldId,
+          id: map.questionId,
           value: String(value)
         });
       }
     });
 
-    console.log("Final ID population payload:", payload);
+    console.log("Final QUESTION-ID payload:", payload);
 
-    // 🔑 CRITICAL FIX: defer write to next macrotask
     if (payload.length) {
-      setTimeout(() => {
-        JFCustomWidget.setFieldsValueById(payload);
-      }, 0);
+      JFCustomWidget.setFieldsValueById(payload);
     }
 
     let returnValue;
