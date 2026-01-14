@@ -1,0 +1,51 @@
+{
+  "name": "GIS Address Autocomplete",
+  "label": "GIS Address Autocomplete",
+  "icon": "assets/icon.png",
+  "version": "6.0",
+  "framework": "iframe",
+  "height": 200,
+  "fields": [
+    {
+      "type": "text",
+      "name": "supabaseUrl",
+      "label": "Supabase API URL",
+      "defaultValue": "https://myefnonvpjbggqqurvhy.supabase.co/functions/v1/GIS-Address"
+    },
+    {
+      "type": "text",
+      "name": "streetField",
+      "label": "Street Address Field ID (optional)",
+      "placeholder": "e.g., #input_22_addr_line1",
+      "defaultValue": "#input_22_addr_line1"
+    },
+    {
+      "type": "text",
+      "name": "street2Field",
+      "label": "Street Address Line 2 Field ID (optional)",
+      "placeholder": "e.g., #input_22_addr_line2",
+      "defaultValue": "#input_22_addr_line2"
+    },
+    {
+      "type": "text",
+      "name": "cityField",
+      "label": "City Field ID (optional)",
+      "placeholder": "e.g., #input_22_city",
+      "defaultValue": "#input_22_city"
+    },
+    {
+      "type": "text",
+      "name": "stateField",
+      "label": "State Field ID (optional)",
+      "placeholder": "e.g., #input_22_state",
+      "defaultValue": "#input_22_state"
+    },
+    {
+      "type": "text",
+      "name": "zipField",
+      "label": "ZIP Code Field ID (optional)",
+      "placeholder": "e.g., #input_22_postal",
+      "defaultValue": "#input_22_postal"
+    }
+  ]
+}
